@@ -65,8 +65,11 @@ jobs:
 
       - name: Configure CLI to use OIDC token
         run: |
-          datarecs config set apiUrl "$DATARECS_API_URL"
-          datarecs config set slug "$DATARECS_TENANT_SLUG"
+          # The GitHub Action sets DATARECS_TOKEN; the CLI reads DATARECS_ACCESS_TOKEN
+          echo "DATARECS_ACCESS_TOKEN=$DATARECS_TOKEN" >> $GITHUB_ENV
+          # Point the CLI at the correct API and tenant
+          echo "DATARECS_API_URL=${{ env.DATARECS_API_URL }}" >> $GITHUB_ENV
+          echo "DATARECS_TENANT=${{ env.DATARECS_TENANT_SLUG }}" >> $GITHUB_ENV
 
       - name: List connectors via CLI
         run: |
