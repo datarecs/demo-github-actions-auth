@@ -31,12 +31,12 @@ jobs:
           tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
           tenant-id: ${{ env.DATARECS_TENANT_ID }}
 
-      - name: List OIDC connectors (should succeed - connections:read)
+      - name: List connections (should succeed - connections:read)
         run: |
-          echo "## API Response: List OIDC Connectors" >> $GITHUB_STEP_SUMMARY
+          echo "## API Response: List Connections" >> $GITHUB_STEP_SUMMARY
           echo '```json' >> $GITHUB_STEP_SUMMARY
           RESPONSE=$(curl -f -H "Authorization: Bearer $DATARECS_TOKEN" \
-            "$DATARECS_API_URL/connectors/oidc" 2>&1)
+            "$DATARECS_API_URL/connections" 2>&1)
           echo "$RESPONSE" | jq . | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
@@ -77,11 +77,11 @@ jobs:
           echo "DATARECS_API_URL=${{ env.DATARECS_API_URL }}" >> $GITHUB_ENV
           echo "DATARECS_TENANT=${{ env.DATARECS_TENANT_SLUG }}" >> $GITHUB_ENV
 
-      - name: List connectors via CLI
+      - name: List connections via CLI
         run: |
-          echo "## CLI: List OIDC Connectors" >> $GITHUB_STEP_SUMMARY
+          echo "## CLI: List Connections" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          datarecs connectors oidc list --table 2>&1 | tee -a $GITHUB_STEP_SUMMARY
+          datarecs connections list --table 2>&1 | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: List jobs via CLI
