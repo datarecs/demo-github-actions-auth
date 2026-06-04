@@ -35,19 +35,31 @@ jobs:
         run: |
           echo "## API Response: List Connections" >> $GITHUB_STEP_SUMMARY
           echo '```json' >> $GITHUB_STEP_SUMMARY
-          RESPONSE=$(curl -f -H "Authorization: Bearer $DATARECS_TOKEN" \
-            "$DATARECS_API_URL/connections" 2>&1)
-          echo "$RESPONSE" | jq . | tee -a $GITHUB_STEP_SUMMARY
+          HTTP_CODE=$(curl -s -o /tmp/connections.json -w "%{http_code}" \
+            -H "Authorization: Bearer $DATARECS_TOKEN" \
+            "$DATARECS_API_URL/connections")
+          echo "HTTP $HTTP_CODE" | tee -a $GITHUB_STEP_SUMMARY
+          cat /tmp/connections.json | jq . | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "ERROR: Got HTTP $HTTP_CODE"
+            exit 1
+          fi
 
       - name: List jobs (should succeed - jobs:read)
         run: |
           echo "## API Response: List Jobs" >> $GITHUB_STEP_SUMMARY
           echo '```json' >> $GITHUB_STEP_SUMMARY
-          RESPONSE=$(curl -f -H "Authorization: Bearer $DATARECS_TOKEN" \
-            "$DATARECS_API_URL/jobs" 2>&1)
-          echo "$RESPONSE" | jq . | tee -a $GITHUB_STEP_SUMMARY
+          HTTP_CODE=$(curl -s -o /tmp/jobs.json -w "%{http_code}" \
+            -H "Authorization: Bearer $DATARECS_TOKEN" \
+            "$DATARECS_API_URL/jobs")
+          echo "HTTP $HTTP_CODE" | tee -a $GITHUB_STEP_SUMMARY
+          cat /tmp/jobs.json | jq . | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "ERROR: Got HTTP $HTTP_CODE"
+            exit 1
+          fi
 
   # ─────────────────────────────────────────────────────────────────────
   # Job 2: Authenticate and use the DataRecs CLI
