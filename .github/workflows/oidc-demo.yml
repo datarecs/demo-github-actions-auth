@@ -8,6 +8,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  packages: read
 
 env:
   DATARECS_API_URL: https://api.dev.datarecs.io
@@ -34,16 +35,18 @@ jobs:
         run: |
           echo "## API Response: List OIDC Connectors" >> $GITHUB_STEP_SUMMARY
           echo '```json' >> $GITHUB_STEP_SUMMARY
-          curl -sf -H "Authorization: Bearer $DATARECS_TOKEN" \
-            "$DATARECS_API_URL/connectors/oidc" | jq . | tee -a $GITHUB_STEP_SUMMARY
+          RESPONSE=$(curl -f -H "Authorization: Bearer $DATARECS_TOKEN" \
+            "$DATARECS_API_URL/connectors/oidc" 2>&1)
+          echo "$RESPONSE" | jq . | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: List jobs (should succeed - jobs:read)
         run: |
           echo "## API Response: List Jobs" >> $GITHUB_STEP_SUMMARY
           echo '```json' >> $GITHUB_STEP_SUMMARY
-          curl -sf -H "Authorization: Bearer $DATARECS_TOKEN" \
-            "$DATARECS_API_URL/jobs" | jq . | tee -a $GITHUB_STEP_SUMMARY
+          RESPONSE=$(curl -f -H "Authorization: Bearer $DATARECS_TOKEN" \
+            "$DATARECS_API_URL/jobs" 2>&1)
+          echo "$RESPONSE" | jq . | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   # ─────────────────────────────────────────────────────────────────────
@@ -62,12 +65,9 @@ jobs:
 
       - name: Install DataRecs CLI
         run: |
-          # @datarecs/cli is not yet published to npm — install from GitHub Package Registry
-          npm install -g @datarecs/cli --registry=https://npm.pkg.github.com || {
-            echo "⚠️ CLI not available on npm yet — skipping CLI steps"
-            echo "CLI_AVAILABLE=false" >> $GITHUB_ENV
-          }
-          echo "CLI_AVAILABLE=true" >> $GITHUB_ENV
+          echo "@datarecs:registry=https://npm.pkg.github.com" >> ~/.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> ~/.npmrc
+          npm install -g @datarecs/cli@0.4.1
 
       - name: Configure CLI to use OIDC token
         run: |
@@ -78,19 +78,17 @@ jobs:
           echo "DATARECS_TENANT=${{ env.DATARECS_TENANT_SLUG }}" >> $GITHUB_ENV
 
       - name: List connectors via CLI
-        if: env.CLI_AVAILABLE == 'true'
         run: |
           echo "## CLI: List OIDC Connectors" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          datarecs connectors oidc list --table | tee -a $GITHUB_STEP_SUMMARY
+          datarecs connectors oidc list --table 2>&1 | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: List jobs via CLI
-        if: env.CLI_AVAILABLE == 'true'
         run: |
           echo "## CLI: List Jobs" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          datarecs jobs list --table | tee -a $GITHUB_STEP_SUMMARY
+          datarecs jobs list --table 2>&1 | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   # ─────────────────────────────────────────────────────────────────────
