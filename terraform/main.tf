@@ -33,7 +33,7 @@ resource "datarecs_oidc_connector" "github_actions" {
     expected_value = "datarecs/demo-github-actions-auth"
   }
 
-  permissions = ["jobs:read", "connections:read"]
+  permissions = ["list_jobs", "list_connections"]
 }
 
 output "connector_id" {
