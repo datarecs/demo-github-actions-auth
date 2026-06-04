@@ -1,0 +1,124 @@
+name: OIDC Authentication Demo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  DATARECS_API_URL: https://api.dev.datarecs.io
+  DATARECS_TENANT_SLUG: ctrl-alt-expletive
+  DATARECS_TENANT_ID: cc82185699b0fa95
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────
+  # Job 1: Authenticate and use the raw API with curl
+  # ─────────────────────────────────────────────────────────────────────
+  auth-and-api:
+    name: "🔐 OIDC Auth → API (curl)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to DataRecs
+        id: auth
+        uses: datarecs/github-actions-auth@v1
+        with:
+          api-url: ${{ env.DATARECS_API_URL }}
+          tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
+          tenant-id: ${{ env.DATARECS_TENANT_ID }}
+
+      - name: List OIDC connectors (should succeed - connections:read)
+        run: |
+          echo "## API Response: List OIDC Connectors" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          curl -sf -H "Authorization: Bearer $DATARECS_TOKEN" \
+            "$DATARECS_API_URL/connectors/oidc" | jq . | tee -a $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: List jobs (should succeed - jobs:read)
+        run: |
+          echo "## API Response: List Jobs" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          curl -sf -H "Authorization: Bearer $DATARECS_TOKEN" \
+            "$DATARECS_API_URL/jobs" | jq . | tee -a $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Job 2: Authenticate and use the DataRecs CLI
+  # ─────────────────────────────────────────────────────────────────────
+  auth-and-cli:
+    name: "🔐 OIDC Auth → CLI"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to DataRecs
+        uses: datarecs/github-actions-auth@v1
+        with:
+          api-url: ${{ env.DATARECS_API_URL }}
+          tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
+          tenant-id: ${{ env.DATARECS_TENANT_ID }}
+
+      - name: Install DataRecs CLI
+        run: npm install -g @datarecs/cli
+
+      - name: Configure CLI to use OIDC token
+        run: |
+          datarecs config set apiUrl "$DATARECS_API_URL"
+          datarecs config set slug "$DATARECS_TENANT_SLUG"
+
+      - name: List connectors via CLI
+        run: |
+          echo "## CLI: List OIDC Connectors" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          datarecs connectors oidc list --table | tee -a $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: List jobs via CLI
+        run: |
+          echo "## CLI: List Jobs" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          datarecs jobs list --table | tee -a $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Job 3: Negative test — prove permission boundaries work
+  # ─────────────────────────────────────────────────────────────────────
+  negative-test:
+    name: "🚫 Negative Test → Webhooks (should fail)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to DataRecs
+        uses: datarecs/github-actions-auth@v1
+        with:
+          api-url: ${{ env.DATARECS_API_URL }}
+          tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
+          tenant-id: ${{ env.DATARECS_TENANT_ID }}
+
+      - name: Attempt to list webhooks (should get 403)
+        run: |
+          echo "## Negative Test: Webhooks Access" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Attempting to access webhooks with only \`jobs:read,connections:read\` permissions..." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -H "Authorization: Bearer $DATARECS_TOKEN" \
+            "$DATARECS_API_URL/webhooks")
+
+          echo "HTTP Status: $HTTP_CODE" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/response.json | jq . >> $GITHUB_STEP_SUMMARY 2>/dev/null || cat /tmp/response.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          if [ "$HTTP_CODE" = "403" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Permission boundary enforced** — 403 Forbidden as expected." >> $GITHUB_STEP_SUMMARY
+            echo "Permission boundary correctly enforced (HTTP 403)"
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Unexpected status code**: $HTTP_CODE (expected 403)" >> $GITHUB_STEP_SUMMARY
+            echo "ERROR: Expected 403, got $HTTP_CODE"
+            exit 1
+          fi
