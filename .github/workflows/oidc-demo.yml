@@ -77,6 +77,7 @@ jobs:
 
       - name: Install DataRecs CLI
         run: |
+          sudo apt-get update && sudo apt-get install -y libsecret-1-dev
           echo "@datarecs:registry=https://npm.pkg.github.com" >> ~/.npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> ~/.npmrc
           npm install -g @datarecs/cli@0.4.1
@@ -91,6 +92,7 @@ jobs:
 
       - name: List connections via CLI
         run: |
+          set -o pipefail
           echo "## CLI: List Connections" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           datarecs connections list --table 2>&1 | tee -a $GITHUB_STEP_SUMMARY
@@ -98,6 +100,7 @@ jobs:
 
       - name: List jobs via CLI
         run: |
+          set -o pipefail
           echo "## CLI: List Jobs" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           datarecs jobs list --table 2>&1 | tee -a $GITHUB_STEP_SUMMARY
