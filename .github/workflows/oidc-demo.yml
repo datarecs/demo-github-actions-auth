@@ -21,7 +21,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────
   auth-and-api:
     name: "🔐 OIDC Auth → API (curl)"
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set-hef
     steps:
       - name: Authenticate to DataRecs
         id: auth
@@ -70,7 +70,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────
   auth-and-cli:
     name: "🔐 OIDC Auth → CLI"
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set-hef
     steps:
       - name: Authenticate to DataRecs
         uses: datarecs/github-actions-auth@v1
@@ -115,7 +115,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────
   negative-test:
     name: "🚫 Negative Test → Webhooks (should fail)"
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set-hef
     steps:
       - name: Authenticate to DataRecs
         uses: datarecs/github-actions-auth@v1
