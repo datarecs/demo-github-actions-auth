@@ -12,7 +12,7 @@ sequenceDiagram
     participant Edge as Cloudflare Edge Router
     participant Cell as DataRecs Cell (core-api)
 
-    GH->>GH: Request OIDC token (aud=https://api.dev.datarecs.io/ctrl-alt-expletive)
+    GH->>GH: Request OIDC token (aud=https://api.dev.datarecs.io/<tenant-slug>)
     GH->>Edge: POST /auth/oidc/exchange (JWT + tenant_id)
     Edge->>Edge: Decode aud → extract slug → KV lookup
     Edge->>Cell: Proxy to Cell (X-Datarecs-Tenant-Slug header)
@@ -35,9 +35,10 @@ The workflow demonstrates three different integration patterns:
 
 ## Prerequisites
 
-The OIDC connector is configured in the `ctrl-alt-expletive` tenant with:
+Configure repository variables `DATARECS_TENANT_SLUG` and `DATARECS_TENANT_ID` for a disposable
+OIDC test tenant. The OIDC connector in that tenant must use:
 - **Issuer:** `https://token.actions.githubusercontent.com`
-- **Audience:** `https://api.dev.datarecs.io/ctrl-alt-expletive`
+- **Audience:** `https://api.dev.datarecs.io/<tenant-slug>`
 - **Claim condition:** `repository` equals `datarecs/demo-github-actions-auth`
 - **Permissions:** `jobs:read`, `connections:read`
 
@@ -51,4 +52,5 @@ The audience follows the pattern `https://<api-host>/<tenant-slug>`. The edge ro
 - Token scoped to `jobs:read` and `connections:read` only
 - Claim condition locks authentication to this specific repository
 - Token lifetime: 1 hour
-- The negative test proves that permission boundaries are enforced
+- The negative test requires an exact HTTP 403 from the real `webhook-endpoints` operation; setup
+  errors and unrelated 4xx responses are failures, never acceptable substitutes

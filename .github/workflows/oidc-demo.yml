@@ -12,8 +12,8 @@ permissions:
 
 env:
   DATARECS_API_URL: https://api.dev.datarecs.io
-  DATARECS_TENANT_SLUG: ctrl-alt-expletive
-  DATARECS_TENANT_ID: cc82185699b0fa95
+  DATARECS_TENANT_SLUG: ${{ vars.DATARECS_TENANT_SLUG }}
+  DATARECS_TENANT_ID: ${{ vars.DATARECS_TENANT_ID }}
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────
@@ -23,9 +23,14 @@ jobs:
     name: "🔐 OIDC Auth → API (curl)"
     runs-on: arc-runner-set-hef
     steps:
+      - name: Require configured disposable OIDC fixture
+        run: |
+          test -n "$DATARECS_TENANT_SLUG" || { echo "::error::DATARECS_TENANT_SLUG repository variable is required"; exit 1; }
+          test -n "$DATARECS_TENANT_ID" || { echo "::error::DATARECS_TENANT_ID repository variable is required"; exit 1; }
+
       - name: Authenticate to DataRecs
         id: auth
-        uses: datarecs/github-actions-auth@v1
+        uses: datarecs/github-actions-auth@221be4a5a90a28f59574f92f91350354f9e2633d # candidate under Brent/Kate review
         with:
           api-url: ${{ env.DATARECS_API_URL }}
           tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
@@ -58,10 +63,8 @@ jobs:
           echo "HTTP $HTTP_CODE" | tee -a $GITHUB_STEP_SUMMARY
           cat /tmp/connections.json | jq . | tee -a $GITHUB_STEP_SUMMARY 2>/dev/null || cat /tmp/connections.json | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          # /connections may return 400 if workspace_id is required - that's OK for this demo
-          # The CLI job demonstrates connections work (it sends workspace context)
-          if [ "$HTTP_CODE" = "403" ] || [ "$HTTP_CODE" = "401" ]; then
-            echo "ERROR: Got HTTP $HTTP_CODE (permission denied)"
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "ERROR: Got HTTP $HTTP_CODE"
             exit 1
           fi
 
@@ -72,8 +75,13 @@ jobs:
     name: "🔐 OIDC Auth → CLI"
     runs-on: arc-runner-set-hef
     steps:
+      - name: Require configured disposable OIDC fixture
+        run: |
+          test -n "$DATARECS_TENANT_SLUG" || { echo "::error::DATARECS_TENANT_SLUG repository variable is required"; exit 1; }
+          test -n "$DATARECS_TENANT_ID" || { echo "::error::DATARECS_TENANT_ID repository variable is required"; exit 1; }
+
       - name: Authenticate to DataRecs
-        uses: datarecs/github-actions-auth@v1
+        uses: datarecs/github-actions-auth@221be4a5a90a28f59574f92f91350354f9e2633d # candidate under Brent/Kate review
         with:
           api-url: ${{ env.DATARECS_API_URL }}
           tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
@@ -117,8 +125,13 @@ jobs:
     name: "🚫 Negative Test → Webhooks (should fail)"
     runs-on: arc-runner-set-hef
     steps:
+      - name: Require configured disposable OIDC fixture
+        run: |
+          test -n "$DATARECS_TENANT_SLUG" || { echo "::error::DATARECS_TENANT_SLUG repository variable is required"; exit 1; }
+          test -n "$DATARECS_TENANT_ID" || { echo "::error::DATARECS_TENANT_ID repository variable is required"; exit 1; }
+
       - name: Authenticate to DataRecs
-        uses: datarecs/github-actions-auth@v1
+        uses: datarecs/github-actions-auth@221be4a5a90a28f59574f92f91350354f9e2633d # candidate under Brent/Kate review
         with:
           api-url: ${{ env.DATARECS_API_URL }}
           tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
@@ -133,20 +146,20 @@ jobs:
 
           HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -H "Authorization: Bearer $DATARECS_TOKEN" \
-            "$DATARECS_API_URL/webhooks")
+            "$DATARECS_API_URL/webhook-endpoints")
 
           echo "HTTP Status: $HTTP_CODE" >> $GITHUB_STEP_SUMMARY
           echo '```json' >> $GITHUB_STEP_SUMMARY
           cat /tmp/response.json | jq . >> $GITHUB_STEP_SUMMARY 2>/dev/null || cat /tmp/response.json >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
-          if [ "$HTTP_CODE" = "403" ] || [ "$HTTP_CODE" = "400" ]; then
+          if [ "$HTTP_CODE" = "403" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "✅ **Permission boundary enforced** — HTTP $HTTP_CODE as expected (no access)." >> $GITHUB_STEP_SUMMARY
             echo "Permission boundary correctly enforced (HTTP $HTTP_CODE)"
           else
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "❌ **Unexpected status code**: $HTTP_CODE (expected 403)" >> $GITHUB_STEP_SUMMARY
-            echo "ERROR: Expected 403 or 400, got $HTTP_CODE"
+            echo "ERROR: Expected 403, got $HTTP_CODE"
             exit 1
           fi
