@@ -30,7 +30,7 @@ jobs:
 
       - name: Authenticate to DataRecs
         id: auth
-        uses: datarecs/github-actions-auth@221be4a5a90a28f59574f92f91350354f9e2633d # candidate under Brent/Kate review
+        uses: datarecs/github-actions-auth@aa0c352b5861d25f2ce455d93a924e4d8594ef50 # candidate under Brent/Kate review
         with:
           api-url: ${{ env.DATARECS_API_URL }}
           tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
@@ -47,8 +47,8 @@ jobs:
           echo "HTTP $HTTP_CODE" | tee -a $GITHUB_STEP_SUMMARY
           cat /tmp/jobs.json | jq . | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "ERROR: Got HTTP $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: Expected HTTP 200, got $HTTP_CODE"
             exit 1
           fi
 
@@ -63,8 +63,8 @@ jobs:
           echo "HTTP $HTTP_CODE" | tee -a $GITHUB_STEP_SUMMARY
           cat /tmp/connections.json | jq . | tee -a $GITHUB_STEP_SUMMARY 2>/dev/null || cat /tmp/connections.json | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "ERROR: Got HTTP $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: Expected HTTP 200, got $HTTP_CODE"
             exit 1
           fi
 
@@ -81,7 +81,7 @@ jobs:
           test -n "$DATARECS_TENANT_ID" || { echo "::error::DATARECS_TENANT_ID repository variable is required"; exit 1; }
 
       - name: Authenticate to DataRecs
-        uses: datarecs/github-actions-auth@221be4a5a90a28f59574f92f91350354f9e2633d # candidate under Brent/Kate review
+        uses: datarecs/github-actions-auth@aa0c352b5861d25f2ce455d93a924e4d8594ef50 # candidate under Brent/Kate review
         with:
           api-url: ${{ env.DATARECS_API_URL }}
           tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
@@ -131,7 +131,7 @@ jobs:
           test -n "$DATARECS_TENANT_ID" || { echo "::error::DATARECS_TENANT_ID repository variable is required"; exit 1; }
 
       - name: Authenticate to DataRecs
-        uses: datarecs/github-actions-auth@221be4a5a90a28f59574f92f91350354f9e2633d # candidate under Brent/Kate review
+        uses: datarecs/github-actions-auth@aa0c352b5861d25f2ce455d93a924e4d8594ef50 # candidate under Brent/Kate review
         with:
           api-url: ${{ env.DATARECS_API_URL }}
           tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
