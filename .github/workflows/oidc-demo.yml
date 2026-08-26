@@ -31,7 +31,7 @@ jobs:
 
       - name: Authenticate to DataRecs
         id: auth
-        uses: datarecs/github-actions-auth@aa0c352b5861d25f2ce455d93a924e4d8594ef50 # candidate under Brent/Kate review
+        uses: datarecs/github-actions-auth@4a436c0d5d0d9a739ceb0ceb7916162080962cea # candidate under Brent/Kate review
         with:
           api-url: ${{ env.DATARECS_API_URL }}
           tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
@@ -77,7 +77,7 @@ jobs:
           [[ "$DATARECS_TENANT_ID" =~ ^bbbb[0-9a-f]{12}$ ]] || { echo "::error::Refusing non-test tenant: DATARECS_TENANT_ID must be bbbb plus 12 lowercase hex characters"; exit 1; }
 
       - name: Authenticate to DataRecs
-        uses: datarecs/github-actions-auth@aa0c352b5861d25f2ce455d93a924e4d8594ef50 # candidate under Brent/Kate review
+        uses: datarecs/github-actions-auth@4a436c0d5d0d9a739ceb0ceb7916162080962cea # candidate under Brent/Kate review
         with:
           api-url: ${{ env.DATARECS_API_URL }}
           tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
@@ -132,7 +132,7 @@ jobs:
           [[ "$DATARECS_TENANT_ID" =~ ^bbbb[0-9a-f]{12}$ ]] || { echo "::error::Refusing non-test tenant: DATARECS_TENANT_ID must be bbbb plus 12 lowercase hex characters"; exit 1; }
 
       - name: Authenticate to DataRecs
-        uses: datarecs/github-actions-auth@aa0c352b5861d25f2ce455d93a924e4d8594ef50 # candidate under Brent/Kate review
+        uses: datarecs/github-actions-auth@4a436c0d5d0d9a739ceb0ceb7916162080962cea # candidate under Brent/Kate review
         with:
           api-url: ${{ env.DATARECS_API_URL }}
           tenant-slug: ${{ env.DATARECS_TENANT_SLUG }}
