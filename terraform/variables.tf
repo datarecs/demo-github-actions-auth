@@ -13,5 +13,4 @@ variable "datarecs_api_key" {
 variable "datarecs_tenant_slug" {
   description = "DataRecs tenant slug (used to construct the OIDC audience)"
   type        = string
-  default     = "ctrl-alt-expletive"
 }

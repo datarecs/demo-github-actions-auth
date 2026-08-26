@@ -12,8 +12,8 @@ permissions:
 
 env:
   DATARECS_API_URL: https://api.dev.datarecs.io
-  DATARECS_TENANT_SLUG: ctrl-alt-expletive
-  DATARECS_TENANT_ID: cc82185699b0fa95
+  DATARECS_TENANT_SLUG: ${{ vars.DATARECS_TENANT_SLUG }}
+  DATARECS_TENANT_ID: ${{ vars.DATARECS_TENANT_ID }}
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────
@@ -23,6 +23,12 @@ jobs:
     name: "🔐 OIDC Auth → API (curl)"
     runs-on: arc-runner-set-hef
     steps:
+      - name: Require configured disposable OIDC fixture
+        run: |
+          test -n "$DATARECS_TENANT_SLUG" || { echo "::error::DATARECS_TENANT_SLUG repository variable is required"; exit 1; }
+          test -n "$DATARECS_TENANT_ID" || { echo "::error::DATARECS_TENANT_ID repository variable is required"; exit 1; }
+          [[ "$DATARECS_TENANT_ID" =~ ^bbbb[0-9a-f]{12}$ ]] || { echo "::error::Refusing non-test tenant: DATARECS_TENANT_ID must be bbbb plus 12 lowercase hex characters"; exit 1; }
+
       - name: Authenticate to DataRecs
         id: auth
         uses: datarecs/github-actions-auth@v1
@@ -33,37 +39,29 @@ jobs:
 
       - name: List jobs (should succeed - list_jobs)
         run: |
-          echo "## API Response: List Jobs" >> $GITHUB_STEP_SUMMARY
-          echo '```json' >> $GITHUB_STEP_SUMMARY
           HTTP_CODE=$(curl -s -o /tmp/jobs.json -w "%{http_code}" \
             -H "Authorization: Bearer $DATARECS_TOKEN" \
             -H "X-Datarecs-Tenant-Hint: $DATARECS_TENANT_SLUG" \
             "$DATARECS_API_URL/jobs")
-          echo "HTTP $HTTP_CODE" | tee -a $GITHUB_STEP_SUMMARY
-          cat /tmp/jobs.json | jq . | tee -a $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "ERROR: Got HTTP $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::List jobs failed: expected HTTP 200, got $HTTP_CODE (response body suppressed)"
             exit 1
           fi
+          RESOURCE_COUNT=$(jq -er 'if (.items | type) == "array" then (.items | length) else error("unexpected list shape") end' /tmp/jobs.json) || { echo "::error::List jobs returned an unexpected response shape (body suppressed)"; exit 1; }
+          echo "API list-jobs: HTTP 200, item count $RESOURCE_COUNT" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: List connections (should succeed - list_connections)
         run: |
-          echo "## API Response: List Connections" >> $GITHUB_STEP_SUMMARY
-          echo '```json' >> $GITHUB_STEP_SUMMARY
           HTTP_CODE=$(curl -s -o /tmp/connections.json -w "%{http_code}" \
             -H "Authorization: Bearer $DATARECS_TOKEN" \
             -H "X-Datarecs-Tenant-Hint: $DATARECS_TENANT_SLUG" \
             "$DATARECS_API_URL/connections")
-          echo "HTTP $HTTP_CODE" | tee -a $GITHUB_STEP_SUMMARY
-          cat /tmp/connections.json | jq . | tee -a $GITHUB_STEP_SUMMARY 2>/dev/null || cat /tmp/connections.json | tee -a $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          # /connections may return 400 if workspace_id is required - that's OK for this demo
-          # The CLI job demonstrates connections work (it sends workspace context)
-          if [ "$HTTP_CODE" = "403" ] || [ "$HTTP_CODE" = "401" ]; then
-            echo "ERROR: Got HTTP $HTTP_CODE (permission denied)"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::List connections failed: expected HTTP 200, got $HTTP_CODE (response body suppressed)"
             exit 1
           fi
+          RESOURCE_COUNT=$(jq -er 'if (.items | type) == "array" then (.items | length) else error("unexpected list shape") end' /tmp/connections.json) || { echo "::error::List connections returned an unexpected response shape (body suppressed)"; exit 1; }
+          echo "API list-connections: HTTP 200, item count $RESOURCE_COUNT" | tee -a "$GITHUB_STEP_SUMMARY"
 
   # ─────────────────────────────────────────────────────────────────────
   # Job 2: Authenticate and use the DataRecs CLI
@@ -72,6 +70,12 @@ jobs:
     name: "🔐 OIDC Auth → CLI"
     runs-on: arc-runner-set-hef
     steps:
+      - name: Require configured disposable OIDC fixture
+        run: |
+          test -n "$DATARECS_TENANT_SLUG" || { echo "::error::DATARECS_TENANT_SLUG repository variable is required"; exit 1; }
+          test -n "$DATARECS_TENANT_ID" || { echo "::error::DATARECS_TENANT_ID repository variable is required"; exit 1; }
+          [[ "$DATARECS_TENANT_ID" =~ ^bbbb[0-9a-f]{12}$ ]] || { echo "::error::Refusing non-test tenant: DATARECS_TENANT_ID must be bbbb plus 12 lowercase hex characters"; exit 1; }
+
       - name: Authenticate to DataRecs
         uses: datarecs/github-actions-auth@v1
         with:
@@ -88,27 +92,31 @@ jobs:
 
       - name: Configure CLI to use OIDC token
         run: |
-          # The GitHub Action sets DATARECS_TOKEN; the CLI reads DATARECS_ACCESS_TOKEN
-          echo "DATARECS_ACCESS_TOKEN=$DATARECS_TOKEN" >> $GITHUB_ENV
-          # Point the CLI at the correct API and tenant
-          echo "DATARECS_API_URL=${{ env.DATARECS_API_URL }}" >> $GITHUB_ENV
-          echo "DATARECS_TENANT=${{ env.DATARECS_TENANT_SLUG }}" >> $GITHUB_ENV
+          {
+            # The GitHub Action sets DATARECS_TOKEN; the CLI reads DATARECS_ACCESS_TOKEN.
+            echo "DATARECS_ACCESS_TOKEN=$DATARECS_TOKEN"
+            # Point the CLI at the correct API and tenant.
+            echo "DATARECS_API_URL=${{ env.DATARECS_API_URL }}"
+            echo "DATARECS_TENANT=${{ env.DATARECS_TENANT_SLUG }}"
+          } >> "$GITHUB_ENV"
 
       - name: List connections via CLI
         run: |
-          set -o pipefail
-          echo "## CLI: List Connections" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          datarecs connections list --table 2>&1 | tee -a $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          if ! datarecs connections list --json >/tmp/cli-connections.json 2>/tmp/cli-connections.err; then
+            echo "::error::CLI list connections failed (output suppressed)"
+            exit 1
+          fi
+          RESOURCE_COUNT=$(jq -er 'if (.items | type) == "array" then (.items | length) else error("unexpected list shape") end' /tmp/cli-connections.json) || { echo "::error::CLI list connections returned an unexpected response shape (output suppressed)"; exit 1; }
+          echo "CLI list-connections: success, item count $RESOURCE_COUNT" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: List jobs via CLI
         run: |
-          set -o pipefail
-          echo "## CLI: List Jobs" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          datarecs jobs list --table 2>&1 | tee -a $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          if ! datarecs jobs list --json >/tmp/cli-jobs.json 2>/tmp/cli-jobs.err; then
+            echo "::error::CLI list jobs failed (output suppressed)"
+            exit 1
+          fi
+          RESOURCE_COUNT=$(jq -er 'if (.items | type) == "array" then (.items | length) else error("unexpected list shape") end' /tmp/cli-jobs.json) || { echo "::error::CLI list jobs returned an unexpected response shape (output suppressed)"; exit 1; }
+          echo "CLI list-jobs: success, item count $RESOURCE_COUNT" | tee -a "$GITHUB_STEP_SUMMARY"
 
   # ─────────────────────────────────────────────────────────────────────
   # Job 3: Negative test — prove permission boundaries work
@@ -117,6 +125,12 @@ jobs:
     name: "🚫 Negative Test → Webhooks (should fail)"
     runs-on: arc-runner-set-hef
     steps:
+      - name: Require configured disposable OIDC fixture
+        run: |
+          test -n "$DATARECS_TENANT_SLUG" || { echo "::error::DATARECS_TENANT_SLUG repository variable is required"; exit 1; }
+          test -n "$DATARECS_TENANT_ID" || { echo "::error::DATARECS_TENANT_ID repository variable is required"; exit 1; }
+          [[ "$DATARECS_TENANT_ID" =~ ^bbbb[0-9a-f]{12}$ ]] || { echo "::error::Refusing non-test tenant: DATARECS_TENANT_ID must be bbbb plus 12 lowercase hex characters"; exit 1; }
+
       - name: Authenticate to DataRecs
         uses: datarecs/github-actions-auth@v1
         with:
@@ -126,27 +140,30 @@ jobs:
 
       - name: Attempt to list webhooks (should get 403)
         run: |
-          echo "## Negative Test: Webhooks Access" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Attempting to access webhooks with only \`jobs:read,connections:read\` permissions..." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Negative Test: Webhooks Access"
+            echo ""
+            echo "Attempting to access webhooks with only \`jobs:read,connections:read\` permissions..."
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
 
           HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -H "Authorization: Bearer $DATARECS_TOKEN" \
-            "$DATARECS_API_URL/webhooks")
+            "$DATARECS_API_URL/webhook-endpoints")
 
-          echo "HTTP Status: $HTTP_CODE" >> $GITHUB_STEP_SUMMARY
-          echo '```json' >> $GITHUB_STEP_SUMMARY
-          cat /tmp/response.json | jq . >> $GITHUB_STEP_SUMMARY 2>/dev/null || cat /tmp/response.json >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "HTTP Status: $HTTP_CODE (response body suppressed)" >> "$GITHUB_STEP_SUMMARY"
 
-          if [ "$HTTP_CODE" = "403" ] || [ "$HTTP_CODE" = "400" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ **Permission boundary enforced** — HTTP $HTTP_CODE as expected (no access)." >> $GITHUB_STEP_SUMMARY
+          if [ "$HTTP_CODE" = "403" ]; then
+            {
+              echo ""
+              echo "✅ **Permission boundary enforced** — HTTP $HTTP_CODE as expected (no access)."
+            } >> "$GITHUB_STEP_SUMMARY"
             echo "Permission boundary correctly enforced (HTTP $HTTP_CODE)"
           else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "❌ **Unexpected status code**: $HTTP_CODE (expected 403)" >> $GITHUB_STEP_SUMMARY
-            echo "ERROR: Expected 403 or 400, got $HTTP_CODE"
+            {
+              echo ""
+              echo "❌ **Unexpected status code**: $HTTP_CODE (expected 403)"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "ERROR: Expected 403, got $HTTP_CODE"
             exit 1
           fi
