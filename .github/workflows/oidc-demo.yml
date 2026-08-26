@@ -1,5 +1,13 @@
 name: OIDC Authentication Demo
 
+# pull_request runs on GitHub-hosted ubuntu-latest, NOT arc-runner-set-hef (our
+# self-hosted runner) — this repo is public, so any PR (including from a fork,
+# though forking is discouraged via repo settings — see repo Settings > Actions >
+# General, "require approval for outside collaborators") would otherwise get
+# arbitrary code execution on our own infrastructure before the job ever reaches
+# the OIDC-auth step. push/workflow_dispatch (only reachable by repo
+# collaborators) keep arc-runner-set-hef. The demo itself only needs network
+# egress to the dev cell, not cluster access, so ubuntu-latest is sufficient.
 on:
   push:
     branches: [main]
@@ -23,7 +31,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────
   auth-and-api:
     name: "🔐 OIDC Auth → API (curl)"
-    runs-on: arc-runner-set-hef
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'arc-runner-set-hef' }}
     steps:
       - name: Require configured disposable OIDC fixture
         run: |
@@ -70,7 +78,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────
   auth-and-cli:
     name: "🔐 OIDC Auth → CLI"
-    runs-on: arc-runner-set-hef
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'arc-runner-set-hef' }}
     steps:
       - name: Require configured disposable OIDC fixture
         run: |
@@ -125,7 +133,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────
   negative-test:
     name: "🚫 Negative Test → Webhooks (should fail)"
-    runs-on: arc-runner-set-hef
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'arc-runner-set-hef' }}
     steps:
       - name: Require configured disposable OIDC fixture
         run: |
