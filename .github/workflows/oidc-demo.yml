@@ -21,7 +21,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────
   auth-and-api:
     name: "🔐 OIDC Auth → API (curl)"
-    runs-on: arc-runner-set-hef
+    runs-on: ubuntu-latest
     steps:
       - name: Require configured disposable OIDC fixture
         run: |
@@ -68,7 +68,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────
   auth-and-cli:
     name: "🔐 OIDC Auth → CLI"
-    runs-on: arc-runner-set-hef
+    runs-on: ubuntu-latest
     steps:
       - name: Require configured disposable OIDC fixture
         run: |
@@ -123,7 +123,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────
   negative-test:
     name: "🚫 Negative Test → Webhooks (should fail)"
-    runs-on: arc-runner-set-hef
+    runs-on: ubuntu-latest
     steps:
       - name: Require configured disposable OIDC fixture
         run: |
