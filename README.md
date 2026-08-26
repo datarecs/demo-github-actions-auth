@@ -54,3 +54,5 @@ The audience follows the pattern `https://<api-host>/<tenant-slug>`. The edge ro
 - Token lifetime: 1 hour
 - The negative test requires an exact HTTP 403 from the real `webhook-endpoints` operation; setup
   errors and unrelated 4xx responses are failures, never acceptable substitutes
+- Pin `datarecs/github-actions-auth` to a released tag (`@v1`) or a specific commit SHA — never
+  `@main` — so a change to the action can't silently alter what this workflow does
