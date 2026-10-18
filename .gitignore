@@ -5,3 +5,7 @@ terraform/terraform.tfstate.backup
 terraform/terraform.tfvars
 *.tfvars
 .env
+
+# Agent worktrees: <repo>/.worktrees/<branch-slug>, created and removed by
+# scripts/agent/worktree.sh in datarecs/workspace. Never committed.
+.worktrees/
